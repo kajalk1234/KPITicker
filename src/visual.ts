@@ -155,7 +155,7 @@ module powerbi.extensibility.visual {
         private static iMaxDeltaWidth: number;
 
         // rendering events api
-        private events: IVisualEventService ;
+        private events: IVisualEventService;
 
         /*
         * Creates instance of KPIIndicator. This method is only called once.
@@ -181,98 +181,103 @@ module powerbi.extensibility.visual {
         */
         // tslint:disable-next-line:cyclomatic-complexity
         public update(options: VisualUpdateOptions): void {
-            this.events.renderingStarted(options);
-            const kpiName: string = 'kpiName';
-            const kpiCurrentValue: string = 'kpiCurrentValue';
-            const kpiLastValue: string = 'kpiLastValue';
-            const kpiStatus: string = 'kpiStatus';
-            const kpiPositiveThresholdValue: string = 'kpiPositiveThresholdValue';
-            const kpiNegativeThresholdValue: string = 'kpiNegativeThresholdValue';
-            let padding = 5;
-            Visual.dynamicWidth = options.viewport.width - padding;
-            Visual.dynamicHeight = options.viewport.height;
-            //clear interval and timeout when update is called
-            if (Visual.iInterval !== -1) {
-                window.clearTimeout(Visual.iInterval);
-            }
-            if (Visual.iTimeout !== -1) {
-                window.clearTimeout(Visual.iTimeout);
-            }
-            // check if basic requirements are satisfied else return
-            if (options.dataViews.length === 0 || !options.dataViews[0].categorical ||
-                ((!options.dataViews[0].categorical.values))) {
-                Visual.displayBasicRequirement(1);
-                return;
-            }
-            if ((!options.dataViews[0].categorical.categories)) {
-                Visual.displayBasicRequirement(4);
-                return;
-            }
-            // initializing Visual.iCurrentPosition to zero
-            Visual.iCurrentPosition = 0;
+            try {
+                this.events.renderingStarted(options);
+                const kpiName: string = 'kpiName';
+                const kpiCurrentValue: string = 'kpiCurrentValue';
+                const kpiLastValue: string = 'kpiLastValue';
+                const kpiStatus: string = 'kpiStatus';
+                const kpiPositiveThresholdValue: string = 'kpiPositiveThresholdValue';
+                const kpiNegativeThresholdValue: string = 'kpiNegativeThresholdValue';
+                let padding = 5;
+                Visual.dynamicWidth = options.viewport.width - padding;
+                Visual.dynamicHeight = options.viewport.height;
+                //clear interval and timeout when update is called
+                if (Visual.iInterval !== -1) {
+                    window.clearTimeout(Visual.iInterval);
+                }
+                if (Visual.iTimeout !== -1) {
+                    window.clearTimeout(Visual.iTimeout);
+                }
+                // check if basic requirements are satisfied else return
+                if (options.dataViews.length === 0 || !options.dataViews[0].categorical ||
+                    ((!options.dataViews[0].categorical.values))) {
+                    Visual.displayBasicRequirement(1);
+                    return;
+                }
+                if ((!options.dataViews[0].categorical.categories)) {
+                    Visual.displayBasicRequirement(4);
+                    return;
+                }
+                // initializing Visual.iCurrentPosition to zero
+                Visual.iCurrentPosition = 0;
 
-            if(Visual.appendIndex(options,kpiName,kpiCurrentValue,kpiLastValue,kpiStatus,kpiPositiveThresholdValue,kpiNegativeThresholdValue)) {
-                return;
-            }
-            // storing all the data in one variable
-            const len: number = Visual.oDataView.categorical.categories[0].values.length;
-            const categoriesLength: number = Visual.oDataView.categorical.categories.length;
-            const valuesLength: number = Visual.oDataView.categorical.values.length;
-            const cLength: number = Visual.oDataView.metadata.columns.length;
-            let iRow: number;
-            let iColumn: number;
-            let kIterator: number = 0;
-            let jIterator: number = 0;
-            // tslint:disable-next-line:no-any
-            const data: any[] = [];
-            for (iRow = 0; iRow < len; iRow++) {
-                data[iRow] = [];
-                kIterator = 0, jIterator = 0;
-                for (iColumn = 0; iColumn < cLength; iColumn++) {
-                    if (Visual.oDataView.metadata.columns[iColumn].isMeasure === true) {
-                        data[iRow][iColumn] = Visual.oDataView.categorical.values[kIterator++].values[iRow];
-                    } else {
-                        data[iRow][iColumn] = Visual.oDataView.categorical.categories[jIterator++].values[iRow];
+                if (Visual.appendIndex(options, kpiName, kpiCurrentValue, kpiLastValue, kpiStatus, kpiPositiveThresholdValue, kpiNegativeThresholdValue)) {
+                    return;
+                }
+                // storing all the data in one variable
+                const len: number = Visual.oDataView.categorical.categories[0].values.length;
+                const categoriesLength: number = Visual.oDataView.categorical.categories.length;
+                const valuesLength: number = Visual.oDataView.categorical.values.length;
+                const cLength: number = Visual.oDataView.metadata.columns.length;
+                let iRow: number;
+                let iColumn: number;
+                let kIterator: number = 0;
+                let jIterator: number = 0;
+                // tslint:disable-next-line:no-any
+                const data: any[] = [];
+                for (iRow = 0; iRow < len; iRow++) {
+                    data[iRow] = [];
+                    kIterator = 0, jIterator = 0;
+                    for (iColumn = 0; iColumn < cLength; iColumn++) {
+                        if (Visual.oDataView.metadata.columns[iColumn].isMeasure === true) {
+                            data[iRow][iColumn] = Visual.oDataView.categorical.values[kIterator++].values[iRow];
+                        } else {
+                            data[iRow][iColumn] = Visual.oDataView.categorical.categories[jIterator++].values[iRow];
+                        }
                     }
                 }
+
+                if (Visual.normalize(data)) {
+                    return;
+                }
+                //Getting Length of Input Threshold Percentage and splitting Dot Seperated string into different index of array
+
+                Visual.splitThresholdString();
+
+                // On and Off Responsive
+                Visual.onAndOff();
+
+                // Set duration according to the format pane
+                Visual.setDuration();
+
+                // creating wrapper1 initially to start the visual
+                Visual.createWrapper(1);
+
+                // change the top of wrapper1 to initially show it on the screen
+                Visual.wrapperCss();
+
+                let iDivStart: number = 1;
+                // the visual is updated
+                Visual.bIsUpdated = true;
+                // populating the wrapper1 that was created
+
+                Visual.populateWrapper(1, iDivStart);
+
+                // Apply carousel feature if toggle is turned on
+                Visual.applyCarousel();
+                // change the value of Visual.iCurrentPosition to number of containers
+                Visual.iCurrentPosition = Visual.iNumberOfKPI;
+                // call add next data in fixed timeout only if some slicer is not applied or
+                //the number of data is equal to the number of containers.
+                if (!(Visual.iNumberOfKPI === Visual.oData.length) && (Visual.iShowAnimation === true)) {
+                    Visual.iInterval = window.setTimeout(Visual.addNextData, Visual.iDuration);
+                }
+                this.events.renderingFinished(options);
             }
-
-            if(Visual.normalize(data)){
-                return;
+            catch(exception){
+                this.events.renderingFailed(options, exception);
             }
-            //Getting Length of Input Threshold Percentage and splitting Dot Seperated string into different index of array
-            
-            Visual.splitThresholdString();
-
-            // On and Off Responsive
-            Visual.onAndOff();
-
-            // Set duration according to the format pane
-            Visual.setDuration();
-
-            // creating wrapper1 initially to start the visual
-            Visual.createWrapper(1);
-
-            // change the top of wrapper1 to initially show it on the screen
-            Visual.wrapperCss();
-
-            let iDivStart:number = 1;
-            // the visual is updated
-            Visual.bIsUpdated = true;
-            // populating the wrapper1 that was created
-            
-            Visual.populateWrapper(1, iDivStart);
-
-            // Apply carousel feature if toggle is turned on
-            Visual.applyCarousel();
-            // change the value of Visual.iCurrentPosition to number of containers
-            Visual.iCurrentPosition = Visual.iNumberOfKPI;
-            // call add next data in fixed timeout only if some slicer is not applied or
-            //the number of data is equal to the number of containers.
-            if (!(Visual.iNumberOfKPI === Visual.oData.length) && (Visual.iShowAnimation === true)) {
-                Visual.iInterval = window.setTimeout(Visual.addNextData, Visual.iDuration);
-            }
-            this.events.renderingFinished(options);
         }
 
         // apply css to top of wrapper1 to initially show it on the screen
@@ -314,7 +319,7 @@ module powerbi.extensibility.visual {
                     // previously scrolled data should be appeared
                     $('<div>').attr('id', 'prev').addClass('slideArrows').appendTo('#scrollArrows')
                         // tslint:disable-next-line:typedef
-                        .on('click', ()=> {
+                        .on('click', () => {
                             // Reset duration and delay to 0 so that there is no animation when clicked on carousel
                             Visual.iDuration = 0;
                             Visual.iDelay = 0;
@@ -325,7 +330,7 @@ module powerbi.extensibility.visual {
                         });
                     $('<div>').attr('id', 'next').addClass('slideArrows').appendTo('#scrollArrows')
                         // tslint:disable-next-line:typedef
-                        .on('click', ()=> {
+                        .on('click', () => {
                             // Reset duration and delay to 0 so that there is no animation when clicked on carousel
                             Visual.iDuration = 0;
                             Visual.iDelay = 0;
@@ -365,7 +370,7 @@ module powerbi.extensibility.visual {
                 } else { // if horizontal is off i.e. vertical scrolling is on then top and bottom arrows should be there
                     $('<div>').attr('id', 'top').addClass('slideArrows').appendTo('#scrollArrows')
                         // tslint:disable-next-line:typedef
-                        .on('click', ()=> {
+                        .on('click', () => {
                             // Reset duration and delay to 0 so that there is no animation when clicked on carousel
                             Visual.iDuration = 0;
                             Visual.iDelay = 0;
@@ -374,7 +379,7 @@ module powerbi.extensibility.visual {
                         });
                     $('<div>').attr('id', 'bottom').addClass('slideArrows').appendTo('#scrollArrows')
                         // tslint:disable-next-line:typedef
-                        .on('click', ()=> {
+                        .on('click', () => {
                             // Reset duration and delay to 0 so that there is no animation when clicked on carousel
                             Visual.iDuration = 0;
                             Visual.iDelay = 0;
@@ -402,7 +407,7 @@ module powerbi.extensibility.visual {
         }
 
         // Set duration according to the format pane and convert accordingly
-        private static setDuration () {
+        private static setDuration() {
             Visual.iDurationS = Visual.getValue<number>(Visual.oDataView, 'animation', 'duration', 2);
             if (Visual.iDurationS < Visual.iMinDuration) {
                 Visual.iDurationS = Visual.iMinDuration;
@@ -421,7 +426,7 @@ module powerbi.extensibility.visual {
                 Visual.iDuration = (Visual.iDurationS + Visual.iFadeDuration) * 1000;
             }
         }
-        
+
         // On and Off Responsive
         private static onAndOff() {
             Visual.iResponsive = Visual.getValue(Visual.oDataView, 'responsive', 'makeResponsive', true);
@@ -460,7 +465,7 @@ module powerbi.extensibility.visual {
         }
 
         //Getting Length of Input Threshold Percentage and splitting Dot Seperated string into different index of array
-        private static splitThresholdString () {
+        private static splitThresholdString() {
             const pPercentage: string = String(Visual.iPositiveThresholdPercentage);
             const pLPercentage: number = pPercentage.length;
             //getting Dot "." Position for the string
@@ -607,80 +612,80 @@ module powerbi.extensibility.visual {
             return false;
         }
 
-        private static appendIndex(options: VisualUpdateOptions,kpiName: string,kpiCurrentValue: string, 
-            kpiLastValue: string,kpiStatus: string,kpiPositiveThresholdValue: string,kpiNegativeThresholdValue: string): boolean {
-             // to pass dataView as a parameter when formatting options are choosen
-             Visual.oDataView = options.dataViews[0];
-             let oDataCategorical: DataViewCategorical;
-             oDataCategorical = Visual.oDataView.categorical;
-             let iNumberOfValues: number;
-             iNumberOfValues = oDataCategorical.values.length;
-             let iNumberOfCategories: number;
-             iNumberOfCategories = oDataCategorical.categories.length;
-             let iIndex: number = 0;
- 
-             // initializing the Visual.iIndexOfName, Visual.iIndexOfStatus,
-             //Visual.iIndexOfLastValue,Visual.iIndexOfCurrentValue to -1 so that
-             //if they are not selected by user the value corresponding to them is not displayed
-             Visual.iIndexOfName = -1;
-             Visual.iIndexOfStatus = -1;
-             Visual.iIndexOfLastValue = -1;
-             Visual.iIndexOfCurrentValue = -1;
-             Visual.iPositiveThresholdValue = -1;
-             Visual.iNegativeThresholdValue = -1;
- 
-             // assigning proper index for category KPI Name
-             for (iIndex = 0; iIndex < iNumberOfCategories; iIndex++) {
-                 if (oDataCategorical.categories[iIndex].source.roles[kpiName]) {
-                     Visual.iIndexOfName = iIndex;
-                     break;
-                 }
-             }
-             // assigning proper index for measures
-             for (iIndex = 0; iIndex < iNumberOfValues; iIndex++) {
-                 // assigning index for measure KPI Current Value
-                 if (oDataCategorical.values[iIndex].source.roles[kpiCurrentValue]) {
-                     Visual.iIndexOfCurrentValue = iIndex;
-                 } else if (oDataCategorical.values[iIndex].source.roles[kpiLastValue]) { // assigning index for measure KPI Last Value
-                     Visual.iIndexOfLastValue = iIndex;
-                 } else if (oDataCategorical.values[iIndex].source.roles[kpiStatus]) { // assigning index for measure KPI Status
-                     Visual.iIndexOfStatus = iIndex;
-                     // assigning index for measure KPI Positive Threshold
-                 } else if (oDataCategorical.values[iIndex].source.roles[kpiPositiveThresholdValue]) {
-                     Visual.iPositiveThresholdValue = iIndex;
-                     // assigning index for measure KPI Negative Threshold
-                 } else if (oDataCategorical.values[iIndex].source.roles[kpiNegativeThresholdValue]) {
-                     Visual.iNegativeThresholdValue = iIndex;
-                 }
-             }
-             // if KPI current value or KPI name is not selected
-             if (Visual.iIndexOfCurrentValue === -1 || Visual.iIndexOfName === -1) {
-                 Visual.displayBasicRequirement(1);
- 
-                 return true;
-             }
-             //if status, Positive Threshold Data bag and Negative Threshold Data Bag were selected
-             if (Visual.iIndexOfStatus !== -1 && (Visual.iPositiveThresholdValue !== -1 || Visual.iNegativeThresholdValue !== -1)) {
-                 Visual.displayBasicRequirement(3);
- 
-                 return true;
-             }
-             // if status column has values other than -1,0 and 1
-             if (Visual.iIndexOfStatus !== -1) {
-                 let oStatusData: PrimitiveValue[];
-                 oStatusData = Visual.oDataView.categorical.values[Visual.iIndexOfStatus].values;
-                 let iLengthOfData: number;
-                 iLengthOfData = oStatusData.length;
-                 for (iIndex = 0; iIndex < iLengthOfData; iIndex++) {
-                     if (oStatusData[iIndex] === null || !(oStatusData[iIndex] === 1 ||
-                         oStatusData[iIndex] === -1 || oStatusData[iIndex] === 0)) {
-                         Visual.displayBasicRequirement(2);
- 
-                         return true;
-                     }
-                 }
-             }
-             return false;
+        private static appendIndex(options: VisualUpdateOptions, kpiName: string, kpiCurrentValue: string,
+            kpiLastValue: string, kpiStatus: string, kpiPositiveThresholdValue: string, kpiNegativeThresholdValue: string): boolean {
+            // to pass dataView as a parameter when formatting options are choosen
+            Visual.oDataView = options.dataViews[0];
+            let oDataCategorical: DataViewCategorical;
+            oDataCategorical = Visual.oDataView.categorical;
+            let iNumberOfValues: number;
+            iNumberOfValues = oDataCategorical.values.length;
+            let iNumberOfCategories: number;
+            iNumberOfCategories = oDataCategorical.categories.length;
+            let iIndex: number = 0;
+
+            // initializing the Visual.iIndexOfName, Visual.iIndexOfStatus,
+            //Visual.iIndexOfLastValue,Visual.iIndexOfCurrentValue to -1 so that
+            //if they are not selected by user the value corresponding to them is not displayed
+            Visual.iIndexOfName = -1;
+            Visual.iIndexOfStatus = -1;
+            Visual.iIndexOfLastValue = -1;
+            Visual.iIndexOfCurrentValue = -1;
+            Visual.iPositiveThresholdValue = -1;
+            Visual.iNegativeThresholdValue = -1;
+
+            // assigning proper index for category KPI Name
+            for (iIndex = 0; iIndex < iNumberOfCategories; iIndex++) {
+                if (oDataCategorical.categories[iIndex].source.roles[kpiName]) {
+                    Visual.iIndexOfName = iIndex;
+                    break;
+                }
+            }
+            // assigning proper index for measures
+            for (iIndex = 0; iIndex < iNumberOfValues; iIndex++) {
+                // assigning index for measure KPI Current Value
+                if (oDataCategorical.values[iIndex].source.roles[kpiCurrentValue]) {
+                    Visual.iIndexOfCurrentValue = iIndex;
+                } else if (oDataCategorical.values[iIndex].source.roles[kpiLastValue]) { // assigning index for measure KPI Last Value
+                    Visual.iIndexOfLastValue = iIndex;
+                } else if (oDataCategorical.values[iIndex].source.roles[kpiStatus]) { // assigning index for measure KPI Status
+                    Visual.iIndexOfStatus = iIndex;
+                    // assigning index for measure KPI Positive Threshold
+                } else if (oDataCategorical.values[iIndex].source.roles[kpiPositiveThresholdValue]) {
+                    Visual.iPositiveThresholdValue = iIndex;
+                    // assigning index for measure KPI Negative Threshold
+                } else if (oDataCategorical.values[iIndex].source.roles[kpiNegativeThresholdValue]) {
+                    Visual.iNegativeThresholdValue = iIndex;
+                }
+            }
+            // if KPI current value or KPI name is not selected
+            if (Visual.iIndexOfCurrentValue === -1 || Visual.iIndexOfName === -1) {
+                Visual.displayBasicRequirement(1);
+
+                return true;
+            }
+            //if status, Positive Threshold Data bag and Negative Threshold Data Bag were selected
+            if (Visual.iIndexOfStatus !== -1 && (Visual.iPositiveThresholdValue !== -1 || Visual.iNegativeThresholdValue !== -1)) {
+                Visual.displayBasicRequirement(3);
+
+                return true;
+            }
+            // if status column has values other than -1,0 and 1
+            if (Visual.iIndexOfStatus !== -1) {
+                let oStatusData: PrimitiveValue[];
+                oStatusData = Visual.oDataView.categorical.values[Visual.iIndexOfStatus].values;
+                let iLengthOfData: number;
+                iLengthOfData = oStatusData.length;
+                for (iIndex = 0; iIndex < iLengthOfData; iIndex++) {
+                    if (oStatusData[iIndex] === null || !(oStatusData[iIndex] === 1 ||
+                        oStatusData[iIndex] === -1 || oStatusData[iIndex] === 0)) {
+                        Visual.displayBasicRequirement(2);
+
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
         /*
         * method to display text if basic requirements are not satisfied
@@ -768,7 +773,7 @@ module powerbi.extensibility.visual {
                 };
                 oObjectEnumeration.push(oCarousel);
             }
-            
+
             return oObjectEnumeration;
         }
         /*
@@ -777,19 +782,19 @@ module powerbi.extensibility.visual {
         */
         private static enumerateAnimation(oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
             let oAnimation: VisualObjectInstance;
-                oAnimation = {
-                    objectName: 'animation',
-                    displayName: 'Animation',
-                    selector: null,
-                    properties: {
-                        show: Visual.iShowAnimation,
-                        duration: Visual.iDurationS,
-                        horizontalScroll: Visual.iHorizontalScroll,
-                        verticalStack: Visual.iVerticalStack,
-                        animationStyle: Visual.iAnimationStyle
-                    }
-                };
-                oObjectEnumeration.push(oAnimation);
+            oAnimation = {
+                objectName: 'animation',
+                displayName: 'Animation',
+                selector: null,
+                properties: {
+                    show: Visual.iShowAnimation,
+                    duration: Visual.iDurationS,
+                    horizontalScroll: Visual.iHorizontalScroll,
+                    verticalStack: Visual.iVerticalStack,
+                    animationStyle: Visual.iAnimationStyle
+                }
+            };
+            oObjectEnumeration.push(oAnimation);
 
             return oObjectEnumeration;
         }
@@ -797,51 +802,51 @@ module powerbi.extensibility.visual {
         * method to enumerate through the Responsive defined in the capabilities and adds the properties to the format pane
         * @param {VisualObjectInstance} oObjectEnumeration - list of object instances
         */
-        private static enumerateResponsive (oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
+        private static enumerateResponsive(oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
             let oResponsive: VisualObjectInstance;
-                    oResponsive = {
-                        objectName: 'responsive',
-                        displayName: 'Responsive',
-                        selector: null,
-                        properties: {
-                            makeResponsive: Visual.iResponsive
-                        }
-                    };
-                    if (Visual.iResponsive === false) {
-                        oResponsive = {
-                            objectName: 'responsive',
-                            displayName: 'Responsive',
-                            selector: null,
-                            properties: {
-                                makeResponsive: Visual.iResponsive,
-                                widthOfTiles: Visual.iWidthOfTiles,
-                                heightOfTiles: Visual.iHeightOfTiles
-                            }
-                        };
+            oResponsive = {
+                objectName: 'responsive',
+                displayName: 'Responsive',
+                selector: null,
+                properties: {
+                    makeResponsive: Visual.iResponsive
+                }
+            };
+            if (Visual.iResponsive === false) {
+                oResponsive = {
+                    objectName: 'responsive',
+                    displayName: 'Responsive',
+                    selector: null,
+                    properties: {
+                        makeResponsive: Visual.iResponsive,
+                        widthOfTiles: Visual.iWidthOfTiles,
+                        heightOfTiles: Visual.iHeightOfTiles
                     }
-                    oObjectEnumeration.push(oResponsive);
+                };
+            }
+            oObjectEnumeration.push(oResponsive);
 
-            return oObjectEnumeration; 
+            return oObjectEnumeration;
         }
         /*
         * method to enumerate through the Name defined in the capabilities and adds the properties to the format pane
         * @param {VisualObjectInstance} oObjectEnumeration - list of object instances
         */
-        private static enumerateName (oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
+        private static enumerateName(oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
             let oName: VisualObjectInstance;
-                    oName = {
-                        objectName: 'name',
-                        displayName: 'Name',
-                        selector: null,
-                        properties: {
-                            fontSize: Visual.iNameFontSize,
-                            nameFontColor: Visual.iNameFontColor,
-                            fontFamily: Visual.iNameFontFamily,
-                            alignName: Visual.iNameAlignment
+            oName = {
+                objectName: 'name',
+                displayName: 'Name',
+                selector: null,
+                properties: {
+                    fontSize: Visual.iNameFontSize,
+                    nameFontColor: Visual.iNameFontColor,
+                    fontFamily: Visual.iNameFontFamily,
+                    alignName: Visual.iNameAlignment
 
-                        }
-                    };
-                    oObjectEnumeration.push(oName);
+                }
+            };
+            oObjectEnumeration.push(oName);
 
             return oObjectEnumeration;
         }
@@ -849,20 +854,20 @@ module powerbi.extensibility.visual {
         * method to enumerate through the Value defined in the capabilities and adds the properties to the format pane
         * @param {VisualObjectInstance} oObjectEnumeration - list of object instances
         */
-        private static enumerateValue (oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
+        private static enumerateValue(oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
             let oValue: VisualObjectInstance;
-                    oValue = {
-                        objectName: 'value',
-                        displayName: 'Value',
-                        selector: null,
-                        properties: {
-                            fontSize: Visual.iValueFontSize,
-                            valueFontColor: Visual.iValueFontColor,
-                            fontFamily: Visual.iValueFontFamily,
-                            displayUnits: Visual.iDisplayUnits,
-                            decimalPlaces: Visual.iDecimalPlaces
-                        }
-                    };
+            oValue = {
+                objectName: 'value',
+                displayName: 'Value',
+                selector: null,
+                properties: {
+                    fontSize: Visual.iValueFontSize,
+                    valueFontColor: Visual.iValueFontColor,
+                    fontFamily: Visual.iValueFontFamily,
+                    displayUnits: Visual.iDisplayUnits,
+                    decimalPlaces: Visual.iDecimalPlaces
+                }
+            };
             oObjectEnumeration.push(oValue);
 
             return oObjectEnumeration;
@@ -871,40 +876,40 @@ module powerbi.extensibility.visual {
         * method to enumerate through the Configuration defined in the capabilities and adds the properties to the format pane
         * @param {VisualObjectInstance} oObjectEnumeration - list of object instances
         */
-        private static enumerateConfiguration (oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
+        private static enumerateConfiguration(oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
             let oConfiguration: VisualObjectInstance;
-                    if (Visual.iIndexOfLastValue !== -1) {
-                        oConfiguration = {
-                            objectName: 'configuration',
-                            displayName: 'Formatting',
-                            selector: null,
-                            properties: {
-                                numberOfKPI: Visual.iNumberOfKPI,
-                                enableDelta: Visual.iEnableDelta,
-                                backgroundColor: Visual.iBackgroundColor
-                            }
-                        };
-                        oObjectEnumeration.push(oConfiguration);
-                    } else {
-                        oConfiguration = {
-                            objectName: 'configuration',
-                            displayName: 'Formatting',
-                            selector: null,
-                            properties: {
-                                numberOfKPI: Visual.iNumberOfKPI,
-                                backgroundColor: Visual.iBackgroundColor
-                            }
-                        };
-                        oObjectEnumeration.push(oConfiguration);
+            if (Visual.iIndexOfLastValue !== -1) {
+                oConfiguration = {
+                    objectName: 'configuration',
+                    displayName: 'Formatting',
+                    selector: null,
+                    properties: {
+                        numberOfKPI: Visual.iNumberOfKPI,
+                        enableDelta: Visual.iEnableDelta,
+                        backgroundColor: Visual.iBackgroundColor
                     }
-            
+                };
+                oObjectEnumeration.push(oConfiguration);
+            } else {
+                oConfiguration = {
+                    objectName: 'configuration',
+                    displayName: 'Formatting',
+                    selector: null,
+                    properties: {
+                        numberOfKPI: Visual.iNumberOfKPI,
+                        backgroundColor: Visual.iBackgroundColor
+                    }
+                };
+                oObjectEnumeration.push(oConfiguration);
+            }
+
             return oObjectEnumeration;
         }
         /*
         * method to enumerate through the Indicators defined in the capabilities and adds the properties to the format pane
         * @param {VisualObjectInstance} oObjectEnumeration - list of object instances
         */
-        private static enumerateIndicators (oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
+        private static enumerateIndicators(oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
             if (Visual.iIndexOfStatus !== -1) {
                 let oIndicators: VisualObjectInstance;
                 oIndicators = {
@@ -919,14 +924,14 @@ module powerbi.extensibility.visual {
                 };
                 oObjectEnumeration.push(oIndicators);
             }
-            
+
             return oObjectEnumeration;
         }
         /*
         * method to enumerate through the Threshold defined in the capabilities and adds the properties to the format pane
         * @param {VisualObjectInstance} oObjectEnumeration - list of object instances
         */
-        private static enumerateThreshold (oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
+        private static enumerateThreshold(oObjectEnumeration: VisualObjectInstance[]): VisualObjectInstance[] {
             if (Visual.iIndexOfLastValue !== -1 && Visual.iIndexOfStatus === -1
                 && Visual.iPositiveThresholdValue === -1
                 && Visual.iNegativeThresholdValue === -1) {
@@ -1125,7 +1130,7 @@ module powerbi.extensibility.visual {
                         || this.iNegativeThresholdPercentage !== null)
                     && Visual.iPositiveThresholdValue === -1
                     && Visual.iNegativeThresholdValue === -1) {
-                        Visual.perChangeForCurrLast(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
+                    Visual.perChangeForCurrLast(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
                 }
                 // when both current, last, positive data bag were selected and when status, negative threshold data bag were not selected
                 if (Visual.iIndexOfCurrentValue !== -1
@@ -1133,7 +1138,7 @@ module powerbi.extensibility.visual {
                     && Visual.iIndexOfStatus === -1
                     && Visual.iPositiveThresholdValue !== -1
                     && Visual.iNegativeThresholdValue === -1) {
-                        Visual.perChangeForCurrLastPos(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
+                    Visual.perChangeForCurrLastPos(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
                 }
                 // when both current, last, negative data bag were selected and when status, positive threshold data bag were not selected
                 if (Visual.iIndexOfCurrentValue !== -1
@@ -1141,7 +1146,7 @@ module powerbi.extensibility.visual {
                     && Visual.iIndexOfStatus === -1
                     && Visual.iPositiveThresholdValue === -1
                     && Visual.iNegativeThresholdValue !== -1) {
-                        Visual.perChangeCurrLastNeg(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
+                    Visual.perChangeCurrLastNeg(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
                 }
                 // when both current, last, positive, negative threshold data bag were selected and when status data bag were not selected
                 if (Visual.iIndexOfCurrentValue !== -1
@@ -1149,7 +1154,7 @@ module powerbi.extensibility.visual {
                     && Visual.iIndexOfStatus === -1
                     && Visual.iPositiveThresholdValue !== -1
                     && Visual.iNegativeThresholdValue !== -1) {
-                        Visual.perChangeCurrLastPosNeg(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
+                    Visual.perChangeCurrLastPosNeg(oDataView, sClassNames, iIndicator, iIndex, sDivIdName);
                 }
 
                 // tslint:disable-next-line:triple-equals
@@ -1207,7 +1212,7 @@ module powerbi.extensibility.visual {
 
         // subfunctionality of appendData method
         // when both current, last data bag were selected and when status, positive, negative threshold data bag were not selected
-        private static perChangeForCurrLast (oDataView: DataView,sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
+        private static perChangeForCurrLast(oDataView: DataView, sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
             let sValueDisplayed: any;
             let iCurrentValue: number;
             let iLastValue: number;
@@ -1301,7 +1306,7 @@ module powerbi.extensibility.visual {
 
         // subfunctionality of appendData method
         // when both current, last, positive data bag were selected and when status, negative threshold data bag were not selected
-        private static perChangeForCurrLastPos (oDataView: DataView,sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
+        private static perChangeForCurrLastPos(oDataView: DataView, sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
 
             // tslint:disable-next-line:no-any
             let sValueDisplayed: any;
@@ -1313,68 +1318,68 @@ module powerbi.extensibility.visual {
             let iNThresholdValue: number = 0;
 
             iCurrentValue = <number>oDataView.categorical.values[Visual.iIndexOfCurrentValue].values[iIndex];
-                    iLastValue = <number>oDataView.categorical.values[Visual.iIndexOfLastValue].values[iIndex];
-                    iPThresholdValue = <number>oDataView.categorical.values[Visual.iPositiveThresholdValue].values[iIndex];
-                    const title: string = 'KPI Change Value: '; // difference value of kpi current value and kpi last value
-                    if (this.iNegativeThresholdPercentage !== null) { // Negative threshold value
-                        // if the last KPI value is 0, then the percentage change should be calculated with denominator as 1
-                        if (iLastValue == null || iCurrentValue == null) {
-                            sValueDisplayed = '-';
-                            d3.select(sDivIdName).append('div')
-                                .classed(sClassNames, true)
-                                .attr('title', title + sValueDisplayed)
-                                .text(sValueDisplayed);
-                        } else {
-                            if (iLastValue === 0) {
-                                sValueDisplayed = (((iCurrentValue - iLastValue) / 1) * 100).toFixed(2);
-                            } else {
-                                sValueDisplayed = (((iCurrentValue - iLastValue) / Math.abs(iLastValue)) * 100).toFixed(2);
-                            }
-                            if (sValueDisplayed === '0.00') { // when svaluedisplayed is equal to zero then neutral sign will applied
-                                tStatus = 0;
-                                Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
-                            } else if (sValueDisplayed >= iPThresholdValue && iPThresholdValue !== 0) {
-                                tStatus = 1;
-                                Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
-                            } else if (sValueDisplayed <= (-this.iNegativeThresholdPercentage) && this.iNegativeThresholdPercentage !== 0) {
-                                tStatus = -1;
-                                Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
-                            } else {
-                                tStatus = 0;
-                                Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
-                            }
-                        }
+            iLastValue = <number>oDataView.categorical.values[Visual.iIndexOfLastValue].values[iIndex];
+            iPThresholdValue = <number>oDataView.categorical.values[Visual.iPositiveThresholdValue].values[iIndex];
+            const title: string = 'KPI Change Value: '; // difference value of kpi current value and kpi last value
+            if (this.iNegativeThresholdPercentage !== null) { // Negative threshold value
+                // if the last KPI value is 0, then the percentage change should be calculated with denominator as 1
+                if (iLastValue == null || iCurrentValue == null) {
+                    sValueDisplayed = '-';
+                    d3.select(sDivIdName).append('div')
+                        .classed(sClassNames, true)
+                        .attr('title', title + sValueDisplayed)
+                        .text(sValueDisplayed);
+                } else {
+                    if (iLastValue === 0) {
+                        sValueDisplayed = (((iCurrentValue - iLastValue) / 1) * 100).toFixed(2);
                     } else {
-                        // if the last KPI value is 0, then the percentage change should be calculated with denominator as 1
-                        if (iLastValue == null || iCurrentValue == null) {
-                            sValueDisplayed = '-';
-                            d3.select(sDivIdName).append('div')
-                                .classed(sClassNames, true)
-                                .attr('title', title + sValueDisplayed)
-                                .text(sValueDisplayed);
-                        } else {
-                            if (iLastValue === 0) {
-                                sValueDisplayed = (((iCurrentValue - iLastValue) / 1) * 100).toFixed(2);
-                            } else {
-                                sValueDisplayed = (((iCurrentValue - iLastValue) / Math.abs(iLastValue)) * 100).toFixed(2);
-                            }
-                            if (sValueDisplayed === '0.00') { // when svaluedisplayed is equal to zero then neutral sign will applied
-                                tStatus = 0;
-                                Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
-                            } else if (sValueDisplayed >= iPThresholdValue && iPThresholdValue !== 0) {
-                                tStatus = 1;
-                                Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
-                            } else if (sValueDisplayed > 0 && sValueDisplayed <= iPThresholdValue) {
-                                tStatus = 0;
-                                Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
-                            }
-                        }
+                        sValueDisplayed = (((iCurrentValue - iLastValue) / Math.abs(iLastValue)) * 100).toFixed(2);
                     }
+                    if (sValueDisplayed === '0.00') { // when svaluedisplayed is equal to zero then neutral sign will applied
+                        tStatus = 0;
+                        Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
+                    } else if (sValueDisplayed >= iPThresholdValue && iPThresholdValue !== 0) {
+                        tStatus = 1;
+                        Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
+                    } else if (sValueDisplayed <= (-this.iNegativeThresholdPercentage) && this.iNegativeThresholdPercentage !== 0) {
+                        tStatus = -1;
+                        Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
+                    } else {
+                        tStatus = 0;
+                        Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
+                    }
+                }
+            } else {
+                // if the last KPI value is 0, then the percentage change should be calculated with denominator as 1
+                if (iLastValue == null || iCurrentValue == null) {
+                    sValueDisplayed = '-';
+                    d3.select(sDivIdName).append('div')
+                        .classed(sClassNames, true)
+                        .attr('title', title + sValueDisplayed)
+                        .text(sValueDisplayed);
+                } else {
+                    if (iLastValue === 0) {
+                        sValueDisplayed = (((iCurrentValue - iLastValue) / 1) * 100).toFixed(2);
+                    } else {
+                        sValueDisplayed = (((iCurrentValue - iLastValue) / Math.abs(iLastValue)) * 100).toFixed(2);
+                    }
+                    if (sValueDisplayed === '0.00') { // when svaluedisplayed is equal to zero then neutral sign will applied
+                        tStatus = 0;
+                        Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
+                    } else if (sValueDisplayed >= iPThresholdValue && iPThresholdValue !== 0) {
+                        tStatus = 1;
+                        Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
+                    } else if (sValueDisplayed > 0 && sValueDisplayed <= iPThresholdValue) {
+                        tStatus = 0;
+                        Visual.hresholdtliChangeImage(Visual.oDataView, tStatus, iIndex, sDivIdName);
+                    }
+                }
+            }
         }
 
         // subfunctionality of appendData method
         // when both current, last, negative data bag were selected and when status, positive threshold data bag were not selected
-        private static perChangeCurrLastNeg (oDataView: DataView,sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
+        private static perChangeCurrLastNeg(oDataView: DataView, sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
             let sValueDisplayed: any;
             let iCurrentValue: number;
             let iLastValue: number;
@@ -1444,7 +1449,7 @@ module powerbi.extensibility.visual {
 
         // subfunctionality of appendData method
         // when both current, last, positive, negative threshold data bag were selected and when status data bag were not selected
-        private static perChangeCurrLastPosNeg (oDataView: DataView,sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
+        private static perChangeCurrLastPosNeg(oDataView: DataView, sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
             // tslint:disable-next-line:no-any
             let sValueDisplayed: any;
             let iCurrentValue: number;
@@ -1490,7 +1495,7 @@ module powerbi.extensibility.visual {
 
         // subfunctionality of appendData method
         // when both current, last, threshold data bag were selected and when Delta is enabled
-        private static perChangeCurrLastDel(oDataView: DataView,sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
+        private static perChangeCurrLastDel(oDataView: DataView, sClassNames: string, iIndicator: number, iIndex: number, sDivIdName: string): void {
 
             let sValueDisplayed: any;
             let iCurrentValue: number;
@@ -1898,17 +1903,17 @@ module powerbi.extensibility.visual {
         * The css is changed according to the formatting options
         * @param {number} cssDivStart - The id of div from which the wrapper starts
         */
-        private static width(w:number):number {
-            if(w>=190)
-                return w/2.5;
-            else if(w>=180 && w<190)
-                return w/3;
-            else if(w>=170 && w<180)
-                return w/3.5;
-            else if(w>=160 && w<170)   
-                return w/4;
+        private static width(w: number): number {
+            if (w >= 190)
+                return w / 2.5;
+            else if (w >= 180 && w < 190)
+                return w / 3;
+            else if (w >= 170 && w < 180)
+                return w / 3.5;
+            else if (w >= 160 && w < 170)
+                return w / 4;
             else
-                return w/4.3;
+                return w / 4.3;
         }
         private static changeCSS(iCssDivStart: number): void {
             // change the css according to the number of KPI that are to be displayed at a time
@@ -2113,7 +2118,7 @@ module powerbi.extensibility.visual {
                 sWrapperBottom = '#wrapper2';
             }
             if (Visual.iResponsive) { // if responsive is turned on
-                Visual.animateWrapperHelper(sWrapperTop,sWrapperBottom);
+                Visual.animateWrapperHelper(sWrapperTop, sWrapperBottom);
             } else { // When responsive is turned OFF
                 if (Visual.iAnimationStyle !== 'fade') {
                     if (Visual.iVerticalStack) {
@@ -2121,30 +2126,30 @@ module powerbi.extensibility.visual {
                             $(sWrapperTop).animate({
                                 left: `-=${Visual.iWidthOfTiles}px`
                             },
-                                                   Visual.iDelay).dequeue();
+                                Visual.iDelay).dequeue();
                             // tslint:disable-next-line:typedef
                             $(sWrapperBottom).animate({
                                 left: `-=${Visual.iWidthOfTiles}px`
                             },
                                 // tslint:disable-next-line:typedef
-                                                      Visual.iDelay, ()=> {
-                                    Visual.iTimeout = window.setTimeout(()=> {
+                                Visual.iDelay, () => {
+                                    Visual.iTimeout = window.setTimeout(() => {
                                         $(sWrapperTop).remove();
                                         clearTimeout(Visual.iTimeout);
-                                    },                                     Visual.iDelay);
+                                    }, Visual.iDelay);
                                 });
                         } else {
                             $(sWrapperTop).animate({ top: `-=${Visual.iHeightOfTiles * Visual.iNumberOfKPI}px` }
-                                ,                  Visual.iDelay).dequeue();
+                                , Visual.iDelay).dequeue();
 
                             // tslint:disable-next-line:typedef
                             $(sWrapperBottom).animate({ top: `-=${Visual.iHeightOfTiles * Visual.iNumberOfKPI}px` },
                                 // tslint:disable-next-line:typedef
-                                                      Visual.iDelay, ()=> {
-                                    Visual.iTimeout = window.setTimeout(()=> {
+                                Visual.iDelay, () => {
+                                    Visual.iTimeout = window.setTimeout(() => {
                                         $(sWrapperTop).remove();
                                         clearTimeout(Visual.iTimeout);
-                                    },                                     Visual.iDelay);
+                                    }, Visual.iDelay);
                                 });
                         }
                     } else {
@@ -2152,33 +2157,33 @@ module powerbi.extensibility.visual {
                             $(sWrapperTop).animate({
                                 left: `-=${(Visual.iWidthOfTiles * Visual.iNumberOfKPI) + 10}px`
                             },
-                                                   Visual.iDelay).dequeue();
+                                Visual.iDelay).dequeue();
 
                             // tslint:disable-next-line:typedef
                             $(sWrapperBottom).animate({
                                 left: `-=${(Visual.iWidthOfTiles * Visual.iNumberOfKPI) + 10}px`
                             },
                                 // tslint:disable-next-line:typedef
-                                                      Visual.iDelay, ()=> {
-                                    Visual.iTimeout = window.setTimeout(()=> {
+                                Visual.iDelay, () => {
+                                    Visual.iTimeout = window.setTimeout(() => {
                                         $(sWrapperTop).remove();
                                         clearTimeout(Visual.iTimeout);
-                                    },                                     Visual.iDelay);
+                                    }, Visual.iDelay);
                                 });
                         } else {
                             $(sWrapperTop).animate({ top: `-=${Visual.iHeightOfTiles}px` }, Visual.iDelay).dequeue();
 
                             // tslint:disable-next-line:typedef
-                            $(sWrapperBottom).animate({ top: `-=${Visual.iHeightOfTiles}px` }, Visual.iDelay, ()=> {
-                                Visual.iTimeout = window.setTimeout(()=> {
+                            $(sWrapperBottom).animate({ top: `-=${Visual.iHeightOfTiles}px` }, Visual.iDelay, () => {
+                                Visual.iTimeout = window.setTimeout(() => {
                                     $(sWrapperTop).remove();
                                     clearTimeout(Visual.iTimeout);
-                                },                                     Visual.iDelay);
+                                }, Visual.iDelay);
                             });
                         }
                     }
                 } else {
-                    Visual.iTimeout = setTimeout(()=> {
+                    Visual.iTimeout = setTimeout(() => {
                         $(sWrapperTop).remove();
                         clearTimeout(Visual.iTimeout);
                     });
@@ -2193,46 +2198,46 @@ module powerbi.extensibility.visual {
                     if (Visual.iHorizontalScroll) {
                         $(sWrapperTop).animate({
                             left: `-=${Visual.iMaxDynamicWidthVertical}px`
-                        },                                          Visual.iDelay).dequeue();
+                        }, Visual.iDelay).dequeue();
 
                         // tslint:disable-next-line:typedef
                         $(sWrapperBottom).animate({
                             left: `-=${Visual.iMaxDynamicWidthVertical}px`
                         },
                             // tslint:disable-next-line:typedef
-                                                  Visual.iDelay, ()=> {
-                                Visual.iTimeout = window.setTimeout(()=> {
+                            Visual.iDelay, () => {
+                                Visual.iTimeout = window.setTimeout(() => {
                                     $(sWrapperTop).remove();
                                     clearTimeout(Visual.iTimeout);
-                                },                                  Visual.iDelay);
+                                }, Visual.iDelay);
                             });
                     } else {
                         $(sWrapperTop).animate({ top: `-=${Visual.dynamicHeight}px` }, Visual.iDelay).dequeue();
 
                         // tslint:disable-next-line:typedef
-                        $(sWrapperBottom).animate({ top: `-=${Visual.dynamicHeight}px` }, Visual.iDelay, ()=> {
-                            Visual.iTimeout = window.setTimeout(()=> {
+                        $(sWrapperBottom).animate({ top: `-=${Visual.dynamicHeight}px` }, Visual.iDelay, () => {
+                            Visual.iTimeout = window.setTimeout(() => {
                                 $(sWrapperTop).remove();
                                 clearTimeout(Visual.iTimeout);
-                            },                                     Visual.iDelay);
+                            }, Visual.iDelay);
                         });
                     }
                 } else {
                     if (Visual.iHorizontalScroll) {
                         $(sWrapperTop).animate({
                             left: `-=${Visual.dynamicWidth}px`
-                        },                       Visual.iDelay).dequeue();
+                        }, Visual.iDelay).dequeue();
 
                         // tslint:disable-next-line:typedef
                         $(sWrapperBottom).animate({
                             left: `-=${Visual.dynamicWidth}px`
                         },
                             // tslint:disable-next-line:typedef
-                                                  Visual.iDelay, ()=> {
-                                Visual.iTimeout = window.setTimeout(()=> {
+                            Visual.iDelay, () => {
+                                Visual.iTimeout = window.setTimeout(() => {
                                     $(sWrapperTop).remove();
                                     clearTimeout(Visual.iTimeout);
-                                },                                     Visual.iDelay);
+                                }, Visual.iDelay);
                             });
                     } else {
                         $(sWrapperTop).animate({ top: `-=${Visual.iMinHeightOfTilesHorizontal}px` }, Visual.iDelay).dequeue();
@@ -2240,16 +2245,16 @@ module powerbi.extensibility.visual {
                         // tslint:disable-next-line:typedef
                         $(sWrapperBottom).animate({ top: `-=${Visual.iMinHeightOfTilesHorizontal}px` }
                             // tslint:disable-next-line:typedef
-                            ,                     Visual.iDelay, ()=> {
-                                Visual.iTimeout = window.setTimeout(()=> {
+                            , Visual.iDelay, () => {
+                                Visual.iTimeout = window.setTimeout(() => {
                                     $(sWrapperTop).remove();
                                     clearTimeout(Visual.iTimeout);
-                                },                                     Visual.iDelay);
+                                }, Visual.iDelay);
                             });
                     }
                 }
             } else { // if animation style is fade
-                Visual.iTimeout = setTimeout(()=> {
+                Visual.iTimeout = setTimeout(() => {
                     $(sWrapperTop).remove();
                     clearTimeout(Visual.iTimeout);
                 });
